@@ -1,0 +1,8 @@
+# Secrets we want to not store in version control
+secret_key
+
+# pyc files are annoying
+*.pyc
+
+# environment
+venv

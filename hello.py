@@ -3,17 +3,25 @@ from flask.ext.script import Manager
 from flask.ext.bootstrap import Bootstrap
 from flask.ext.moment import Moment
 from flask.ext.wtf import Form
+from flask.ext.sqlalchemy import SQLAlchemy
 from wtforms import StringField, SubmitField
 from wtforms.validators import Required
 
 from datetime import datetime
 
+basedir = os.path.abspath(os.path.dirname(__file__))
+
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] =\
+        'postgresql://skeller:holeysmokes@localhost:5432/sammy_db'
+app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 with open('secret_key') as f:
     app.config['SECRET_KEY'] = f.readline().strip()
 bootstrap = Bootstrap(app)
 moment = Moment(app)
 manager = Manager(app)
+
+db = SQLAlchemy(app)
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -41,6 +49,22 @@ def user(name):
 class NameForm(Form):
     name = StringField('What is your name?', validators=[Required()])
     submit = SubmitField('Submit')
+
+class Role(db.Model):
+    __tablename__ = 'roles'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True)
+
+    def __repr__(self):
+        return '<Role {}>'.format(self.name)
+
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), unique=True, index=True)
+
+    def __repr__(self):
+        return '<User {}>'.format(self.username)
 
 if __name__ == '__main__':
     manager.run()

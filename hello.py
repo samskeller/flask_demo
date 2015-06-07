@@ -6,6 +6,7 @@ from flask.ext.migrate import Migrate, MigrateCommand
 from flask.ext.wtf import Form
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.script import Shell
+from flask.ext.mail import Mail
 from wtforms import StringField, SubmitField
 from wtforms.validators import Required
 
@@ -17,6 +18,15 @@ app.config['SQLALCHEMY_DATABASE_URI'] =\
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 with open('secret_key') as f:
     app.config['SECRET_KEY'] = f.readline().strip()
+
+## Email config ##
+app.config['MAIL_SERVER'] = 'smtp.googlemail.com' 
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['SAMMY_MAIL_SUBJECT_PREFIX'] = '[Sammy]'
+app.config['SAMMY_MAIL_SENDER'] = 'Sammy Admin <sammy@sammy.com>'
+
 bootstrap = Bootstrap(app)
 moment = Moment(app)
 manager = Manager(app)
@@ -25,6 +35,8 @@ db = SQLAlchemy(app)
 
 migrate = Migrate(app, db)
 manager.add_command('db', MigrateCommand)
+
+mail = Mail(app)
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -79,6 +91,18 @@ class User(db.Model):
 def make_shell_context():
     return dict(app=app, db=db, User=User, Role=Role)
 manager.add_command("shell", Shell(make_context=make_shell_context))
+
+def send_async_email(app, msg):
+    with app.app_context():
+        mail.send(msg)
+
+def send_email(to, subject, template, **kwargs):
+    msg = Message(app.config['SAMMY_MAIL_SUBJECT_PREFIX'] + subject, sender=app.config['SAMMY_MAIL_SENDER'], recipients=[to])
+    msg.body = render_template(template + '.txt', **kwags)
+    msg.html = render_template(template + '.html', **kwargs)
+    thr = Thread(target=send_async_email, args=[app, msg])
+    thr.start()
+    return thr
 
 if __name__ == '__main__':
     manager.run()
